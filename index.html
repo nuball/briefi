@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Briefi">
+<title>Briefi</title>
+<link rel="manifest" href="/manifest.json">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --accent: #00d472;
+  --accent-dim: rgba(0,212,114,0.12);
+  --red: #ff4455;
+  --yellow: #e6a800;
+  --r: 14px;
+}
+[data-theme="dark"] {
+  --bg: #080808;
+  --surface: #111111;
+  --surface2: #1c1c1c;
+  --border: #242424;
+  --text: #e8e8e8;
+  --text2: #777;
+  --text3: #3a3a3a;
+  --shadow: none;
+}
+[data-theme="light"] {
+  --bg: #f4f4f2;
+  --surface: #ffffff;
+  --surface2: #ebebea;
+  --border: #e0e0de;
+  --text: #1a1a1a;
+  --text2: #888;
+  --text3: #c0c0be;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Apple SD Gothic Neo', -apple-system, 'Noto Sans KR', sans-serif; -webkit-font-smoothing: antialiased; transition: background 0.2s, color 0.2s; }
+
+/* ── Login Screen ── */
+#loginScreen {
+  position: fixed; inset: 0; z-index: 200;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.login-card {
+  width: 100%; max-width: 340px;
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 20px;
+}
+.login-logo { font-size: 36px; font-weight: 800; letter-spacing: -1px; color: var(--text); }
+.login-logo span { color: var(--accent); }
+.login-tagline { font-size: 15px; color: var(--text2); line-height: 1.6; }
+.login-free {
+  background: var(--accent-dim);
+  border: 1px solid rgba(0,212,114,0.2);
+  border-radius: 50px;
+  padding: 6px 16px;
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.google-btn {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50px;
+  padding: 15px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  transition: all 0.2s;
+  box-shadow: var(--shadow);
+}
+.google-btn:active { transform: scale(0.97); }
+.google-icon { width: 20px; height: 20px; }
+
+/* ── App ── */
+.app { height: 100vh; display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; }
+
+/* Header */
+.header {
+  padding: 52px 18px 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0; border-bottom: 1px solid var(--border);
+  gap: 10px;
+}
+.logo { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; flex-shrink: 0; }
+.logo span { color: var(--accent); }
+
+.header-center { display: flex; align-items: center; gap: 6px; flex: 1; justify-content: center; }
+.rec-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); transition: background 0.3s; flex-shrink: 0; }
+.rec-dot.active { background: var(--red); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.status-text { font-size: 12px; color: var(--text2); }
+
+.header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.time-badge {
+  font-size: 12px; font-weight: 600;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px 10px;
+  color: var(--text2); white-space: nowrap;
+  transition: color 0.3s;
+}
+.time-badge.warn { color: var(--yellow); }
+.time-badge.danger { color: var(--red); }
+
+.icon-btn {
+  width: 32px; height: 32px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+}
+.icon-btn:active { transform: scale(0.93); }
+.icon-btn svg { width: 15px; height: 15px; stroke: var(--text2); fill: none; stroke-width: 1.8; }
+
+/* Language bar */
+.lang-bar {
+  display: flex; padding: 10px 18px; gap: 8px;
+  flex-shrink: 0; border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+.lang-label { font-size: 11px; color: var(--text3); margin-right: 4px; }
+.lang-btn {
+  font-size: 12px; font-weight: 500;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 50px; padding: 5px 12px;
+  color: var(--text2); cursor: pointer; transition: all 0.2s;
+}
+.lang-btn.active {
+  background: var(--accent-dim);
+  border-color: rgba(0,212,114,0.3);
+  color: var(--accent);
+}
+.lang-note { font-size: 11px; color: var(--text3); margin-left: auto; }
+
+/* Tabs */
+.tabs { display: flex; flex-shrink: 0; border-bottom: 1px solid var(--border); }
+.tab { flex: 1; padding: 11px; font-size: 13px; font-weight: 500; color: var(--text3); text-align: center; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Panels */
+.panel { display: none; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.panel::-webkit-scrollbar { display: none; }
+.panel.active { display: flex; flex-direction: column; }
+
+/* Summary Panel */
+.summary-inner { padding: 16px 18px; flex: 1; display: flex; flex-direction: column; gap: 14px; }
+.section-header { display: flex; justify-content: space-between; align-items: center; }
+.section-label { font-size: 11px; color: var(--text3); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+.timer-ring { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--border); border-top-color: var(--accent); animation: spin 30s linear infinite; display: none; }
+.timer-ring.active { display: block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 28px 20px;
+  text-align: center; color: var(--text3); font-size: 14px; line-height: 1.7;
+  box-shadow: var(--shadow);
+}
+
+.summary-loading { display: none; align-items: center; gap: 10px; color: var(--text2); font-size: 13px; }
+.summary-loading.show { display: flex; }
+.mini-spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spf 0.7s linear infinite; flex-shrink: 0; }
+@keyframes spf { to { transform: rotate(360deg); } }
+
+.summary-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; box-shadow: var(--shadow); animation: fadeUp 0.3s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+.block-time { font-size: 10px; color: var(--text3); margin-bottom: 10px; }
+.block-content { font-size: 14px; line-height: 1.8; color: var(--text); }
+.bullet { display: flex; gap: 8px; margin-bottom: 6px; }
+.bullet:last-child { margin-bottom: 0; }
+.bullet-dot { color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+
+/* Suggest section */
+.suggest-section { display: flex; flex-direction: column; gap: 10px; }
+.suggest-btn {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 50px; padding: 12px 18px;
+  font-size: 13px; font-weight: 600; color: var(--accent);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  gap: 8px; transition: all 0.2s; box-shadow: var(--shadow);
+}
+.suggest-btn:active { transform: scale(0.97); }
+.suggest-btn svg { width: 15px; height: 15px; stroke: var(--accent); fill: none; stroke-width: 2; }
+
+.suggest-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; box-shadow: var(--shadow); animation: fadeUp 0.3s ease; }
+.suggest-item {
+  display: flex; gap: 10px; padding: 10px 0;
+  border-bottom: 1px solid var(--border); cursor: pointer;
+  transition: opacity 0.15s;
+}
+.suggest-item:last-child { border-bottom: none; padding-bottom: 0; }
+.suggest-item:first-child { padding-top: 0; }
+.suggest-item:active { opacity: 0.6; }
+.suggest-num { font-size: 12px; font-weight: 700; color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+.suggest-text { font-size: 14px; line-height: 1.6; color: var(--text); }
+.suggest-copy { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+/* Transcript Panel */
+.transcript-inner { padding: 16px 18px; flex: 1; }
+.empty-state { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--text3); }
+.empty-icon { width: 52px; height: 52px; border: 1.5px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.empty-icon svg { width: 22px; height: 22px; stroke: var(--text3); fill: none; stroke-width: 1.5; }
+.empty-state p { font-size: 14px; text-align: center; line-height: 1.7; }
+.transcript-content { line-height: 2; font-size: 17px; letter-spacing: -0.2px; word-break: keep-all; }
+.word { display: inline; cursor: pointer; border-radius: 4px; padding: 1px 0; transition: background 0.15s, color 0.15s; }
+.word:active, .word.highlighted { background: var(--accent-dim); color: var(--accent); }
+.interim { color: var(--text2); font-style: italic; }
+
+/* Controls */
+.controls { flex-shrink: 0; padding: 14px 18px 40px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+.hint { text-align: center; font-size: 12px; color: var(--text3); display: none; }
+.hint.show { display: block; }
+.btn-row { display: flex; gap: 10px; align-items: center; }
+.record-btn { flex: 1; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 50px; padding: 15px; color: var(--text); font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s; letter-spacing: -0.3px; box-shadow: var(--shadow); }
+.record-btn.recording { background: rgba(255,68,85,0.08); border-color: var(--red); color: var(--red); }
+.record-btn:active { transform: scale(0.97); }
+.record-btn svg { width: 18px; height: 18px; fill: none; stroke-width: 2; stroke: currentColor; }
+.clear-btn { width: 48px; height: 48px; background: var(--surface2); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s; box-shadow: var(--shadow); }
+.clear-btn:active { transform: scale(0.93); }
+.clear-btn svg { width: 16px; height: 16px; stroke: var(--text2); fill: none; stroke-width: 1.8; }
+
+/* Paywall */
+.paywall {
+  position: fixed; inset: 0; z-index: 150;
+  background: rgba(0,0,0,0.8); backdrop-filter: blur(4px);
+  display: none; align-items: flex-end; justify-content: center;
+}
+.paywall.show { display: flex; }
+.paywall-card {
+  width: 100%; max-width: 480px;
+  background: var(--surface); border-top: 1px solid var(--border);
+  border-radius: 20px 20px 0 0; padding: 24px 24px 48px;
+  text-align: center; display: flex; flex-direction: column; gap: 16px;
+  animation: slideUp 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.paywall-title { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+.paywall-desc { font-size: 14px; color: var(--text2); line-height: 1.7; }
+.paywall-badge { font-size: 13px; color: var(--accent); background: var(--accent-dim); border: 1px solid rgba(0,212,114,0.2); border-radius: 50px; padding: 8px 20px; display: inline-block; font-weight: 600; }
+.paywall-tomorrow { font-size: 12px; color: var(--text3); }
+
+/* Popup */
+.popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: flex-end; z-index: 100; backdrop-filter: blur(2px); }
+.popup-overlay.show { display: flex; }
+.popup { width: 100%; max-width: 480px; margin: 0 auto; background: var(--surface); border: 1px solid var(--border); border-radius: 20px 20px 0 0; padding: 20px 20px 44px; animation: slideUp 0.25s cubic-bezier(0.4,0,0.2,1); position: relative; }
+.popup-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+.popup-tag { font-size: 11px; color: var(--accent); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px; }
+.popup-keyword { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 14px; }
+.popup-divider { height: 1px; background: var(--border); margin-bottom: 14px; }
+.popup-body { font-size: 15px; line-height: 1.75; color: var(--text); min-height: 60px; }
+.popup-body.loading { color: var(--text2); display: flex; align-items: center; gap: 10px; }
+.popup-ctx { margin-top: 14px; padding: 10px 14px; background: var(--surface2); border-left: 2px solid var(--accent); border-radius: 0 8px 8px 0; font-size: 12px; color: var(--text2); line-height: 1.6; }
+.popup-close { position: absolute; top: 20px; right: 20px; width: 28px; height: 28px; background: var(--surface2); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; color: var(--text2); }
+
+/* Toast */
+.toast { position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%); background: var(--surface2); border: 1px solid var(--border); border-radius: 50px; padding: 10px 20px; font-size: 13px; color: var(--text2); white-space: nowrap; z-index: 300; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+.toast.show { opacity: 1; }
+
+.not-supported { padding: 60px 24px; text-align: center; color: var(--text2); font-size: 14px; line-height: 1.8; }
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">Brie<span>fi</span></div>
+    <div class="login-tagline">AI가 회의를 실시간으로<br>요약하고 도와드려요</div>
+    <div class="login-free">테스트 버전</div>
+    <button class="google-btn" onclick="signInWithGoogle()">
+      <svg class="google-icon" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      Google로 시작하기
+    </button>
+  </div>
+</div>
+
+<!-- Main App -->
+<div class="app" id="mainApp" style="display:none">
+
+  <div class="header">
+    <div class="logo">Brie<span>fi</span></div>
+    <div class="header-center">
+      <div class="rec-dot" id="recDot"></div>
+      <span class="status-text" id="statusText">대기 중</span>
+    </div>
+    <div class="header-right">
+      <div class="icon-btn" onclick="toggleTheme()" id="themeBtn" title="테마 변경">
+        <svg id="themeIcon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </div>
+      <div class="icon-btn" onclick="signOut()" title="로그아웃">
+        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="lang-bar">
+    <span class="lang-label" id="langLabel">언어</span>
+    <button class="lang-btn active" id="langKo" onclick="setLang('ko')">한국어</button>
+    <button class="lang-btn" id="langEn" onclick="setLang('en')">English</button>
+    <span class="lang-note" id="langNote">한영 혼용 자동 인식</span>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" id="tabSummary" onclick="switchTab('summary')" id="tabSummary">
+      AI 요약
+      <span id="summaryBadge" style="display:none;margin-left:4px;background:var(--accent);color:#000;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;">NEW</span>
+    </div>
+    <div class="tab" id="tabTranscript" onclick="switchTab('transcript')">실시간 자막</div>
+  </div>
+
+  <!-- Summary Panel -->
+  <div class="panel active" id="panelSummary">
+    <div class="summary-inner">
+
+      <div>
+        <div class="section-header">
+          <span class="section-label" id="labelSummary">회의 요약</span>
+          <div class="timer-ring" id="timerRing"></div>
+        </div>
+      </div>
+
+      <div class="summary-loading" id="summaryLoading">
+        <div class="mini-spinner"></div>
+        <span id="summaryLoadingText">요약 생성 중...</span>
+      </div>
+
+      <div id="summaryContent">
+        <div class="empty-card" id="summaryEmpty">
+          녹음을 시작하면<br>30초마다 자동으로 요약이 업데이트돼요
+        </div>
+      </div>
+
+      <div class="suggest-section">
+        <div class="section-header">
+          <span class="section-label" id="labelSuggest">발언 제안</span>
+        </div>
+        <button class="suggest-btn" id="suggestBtn" onclick="getSuggestions()">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span id="suggestBtnText">지금 뭐라고 할까요?</span>
+        </button>
+        <div id="suggestContent"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Transcript Panel -->
+  <div class="panel" id="panelTranscript">
+    <div class="transcript-inner">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </div>
+        <p id="emptyText">녹음을 시작하면<br>대화가 여기 표시돼요</p>
+      </div>
+      <div class="transcript-content" id="transcriptContent" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="hint" id="hint">모르는 단어를 탭하면 AI가 설명해드려요</div>
+    <div class="btn-row">
+      <button class="record-btn" id="recordBtn" onclick="toggleRecording()">
+        <svg id="micIcon" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        <span id="recordText">녹음 시작</span>
+      </button>
+      <button class="clear-btn" onclick="clearAll()">
+        <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.49"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Word Explanation Popup -->
+<div class="popup-overlay" id="popupOverlay" onclick="closePopup(event)">
+  <div class="popup">
+    <div class="popup-handle"></div>
+    <div class="popup-close" onclick="closePopup()">✕</div>
+    <div class="popup-tag" id="popupTag">용어 설명</div>
+    <div class="popup-keyword" id="popupKeyword"></div>
+    <div class="popup-divider"></div>
+    <div class="popup-body" id="popupBody"></div>
+    <div class="popup-ctx" id="popupCtx" style="display:none"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SpeechRecognition) {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'flex';
+  document.querySelector('.app').innerHTML = '<div class="not-supported">이 기능은 Chrome 브라우저에서만 지원돼요.<br><br>Chrome으로 접속해주세요.</div>';
+}
+
+// ── State ──────────────────────────────────────
+let supabaseClient = null;
+let currentUser = null;
+let currentSession = null;
+let recognition = null;
+let isRecording = false;
+let finalTranscript = '';
+let interimSpan = null;
+let currentHighlighted = null;
+let summaryInterval = null;
+let isSummarizing = false;
+let isSuggesting = false;
+let currentTab = 'summary';
+let currentLang = 'ko';
+let isDark = true;
+
+// ── i18n ───────────────────────────────────────
+const i18n = {
+  ko: {
+    status_idle: '대기 중', status_rec: '녹음 중', status_stopped: '중지됨',
+    rec_start: '녹음 시작', rec_stop: '녹음 중지',
+    tab_summary: 'AI 요약', tab_transcript: '실시간 자막',
+    label_summary: '회의 요약', label_suggest: '발언 제안',
+    suggest_btn: '지금 뭐라고 할까요?',
+    loading_summary: '요약 생성 중...', loading_suggest: '발언 제안 생성 중...',
+    empty_summary: '녹음을 시작하면\n30초마다 자동으로 요약이 업데이트돼요',
+    empty_transcript: '녹음을 시작하면\n대화가 여기 표시돼요',
+    hint: '모르는 단어를 탭하면 AI가 설명해드려요',
+    popup_tag: '용어 설명', popup_ctx_prefix: '문맥: ',
+    popup_loading: 'AI가 분석 중이에요...',
+    lang_label: '언어', lang_note: '한영 혼용 자동 인식',
+    paywall_title: '오늘의 무료 시간을 모두 사용했어요',
+    paywall_desc: '하루 10분 무료로 제공돼요.\n프리미엄으로 무제한 이용하세요.',
+    paywall_badge: '프리미엄 준비 중',
+    paywall_tomorrow: '내일 자정에 다시 10분이 충전돼요',
+    summary_update: '요약 업데이트 · ', summary_final: '최종 요약 · ',
+    suggest_tap: '탭하면 복사돼요',
+    toast_copied: '클립보드에 복사됐어요',
+    toast_mic: '마이크 권한을 허용해주세요',
+    toast_limit: '오늘 무료 시간을 모두 사용했어요',
+    toast_summary_fail: '요약 생성 실패',
+    toast_suggest_fail: '발언 제안 생성 실패',
+    time_remaining: '남음'
+  },
+  en: {
+    status_idle: 'Ready', status_rec: 'Recording', status_stopped: 'Stopped',
+    rec_start: 'Start Recording', rec_stop: 'Stop Recording',
+    tab_summary: 'AI Summary', tab_transcript: 'Live Transcript',
+    label_summary: 'Meeting Summary', label_suggest: 'Response Suggestions',
+    suggest_btn: 'What should I say?',
+    loading_summary: 'Generating summary...', loading_suggest: 'Generating suggestions...',
+    empty_summary: 'Start recording and\nthe summary updates every 30 seconds',
+    empty_transcript: 'Start recording and\nthe transcript appears here',
+    hint: 'Tap any word for an AI explanation',
+    popup_tag: 'Term Explanation', popup_ctx_prefix: 'Context: ',
+    popup_loading: 'AI is analyzing...',
+    lang_label: 'Language', lang_note: 'Auto mixed language',
+    paywall_title: "You've used today's free time",
+    paywall_desc: '10 minutes free per day.\nUpgrade to Premium for unlimited access.',
+    paywall_badge: 'Premium Coming Soon',
+    paywall_tomorrow: "Your 10 minutes resets at midnight",
+    summary_update: 'Updated · ', summary_final: 'Final Summary · ',
+    suggest_tap: 'Tap to copy',
+    toast_copied: 'Copied to clipboard',
+    toast_mic: 'Please allow microphone access',
+    toast_limit: "You've used today's free time",
+    toast_summary_fail: 'Summary generation failed',
+    toast_suggest_fail: 'Suggestion generation failed',
+    time_remaining: 'left'
+  }
+};
+function t(key) { return i18n[currentLang][key] || key; }
+
+// ── Init ───────────────────────────────────────
+async function init() {
+  try {
+    const cfg = await fetch('/api/config').then(r => r.json());
+    supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session) {
+      currentUser = session.user;
+      currentSession = session;
+      showApp();
+    }
+
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        currentUser = session.user;
+        currentSession = session;
+        if (event === 'SIGNED_IN') showApp();
+      } else {
+        currentUser = null; currentSession = null;
+        document.getElementById('loginScreen').style.display = 'flex';
+        document.getElementById('mainApp').style.display = 'none';
+      }
+    });
+  } catch (e) {
+    console.error('Init failed:', e);
+  }
+
+  // PWA service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+
+  // Restore theme
+  const saved = localStorage.getItem('briefi_theme');
+  if (saved === 'light') { isDark = false; applyTheme(); }
+}
+
+async function showApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'flex';
+  updateUI();
+}
+
+// ── Auth ───────────────────────────────────────
+async function signInWithGoogle() {
+  if (!supabaseClient) return;
+  await supabaseClient.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin }
+  });
+}
+
+async function signOut() {
+  if (isRecording) stopRecording();
+  await supabaseClient.auth.signOut();
+}
+
+function getToken() { return currentSession?.access_token || ''; }
+
+// ── Language ───────────────────────────────────
+function setLang(lang) {
+  currentLang = lang;
+  document.documentElement.lang = lang;
+  document.getElementById('langKo').className = 'lang-btn' + (lang === 'ko' ? ' active' : '');
+  document.getElementById('langEn').className = 'lang-btn' + (lang === 'en' ? ' active' : '');
+  updateUI();
+}
+
+function updateUI() {
+  document.getElementById('statusText').textContent = isRecording ? t('status_rec') : t('status_idle');
+  document.getElementById('recordText').textContent = isRecording ? t('rec_stop') : t('rec_start');
+  document.getElementById('tabSummary').childNodes[0].textContent = t('tab_summary');
+  document.getElementById('tabTranscript').textContent = t('tab_transcript');
+  document.getElementById('labelSummary').textContent = t('label_summary');
+  document.getElementById('labelSuggest').textContent = t('label_suggest');
+  document.getElementById('suggestBtnText').textContent = t('suggest_btn');
+  document.getElementById('langLabel').textContent = t('lang_label');
+  document.getElementById('langNote').textContent = t('lang_note');
+  document.getElementById('hint').textContent = t('hint');
+  document.getElementById('emptyText').innerHTML = t('empty_transcript').replace('\n', '<br>');
+  document.getElementById('summaryEmpty').innerHTML = t('empty_summary').replace('\n', '<br>');
+}
+
+// ── Theme ──────────────────────────────────────
+function toggleTheme() {
+  isDark = !isDark;
+  applyTheme();
+  localStorage.setItem('briefi_theme', isDark ? 'dark' : 'light');
+}
+
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  const icon = document.getElementById('themeIcon');
+  if (isDark) {
+    icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+  } else {
+    icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+  }
+}
+
+// ── Tabs ───────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabSummary').className = 'tab' + (tab === 'summary' ? ' active' : '');
+  document.getElementById('tabTranscript').className = 'tab' + (tab === 'transcript' ? ' active' : '');
+  document.getElementById('panelSummary').className = 'panel' + (tab === 'summary' ? ' active' : '');
+  document.getElementById('panelTranscript').className = 'panel' + (tab === 'transcript' ? ' active' : '');
+  if (tab === 'summary') document.getElementById('summaryBadge').style.display = 'none';
+}
+
+// ── Recording ──────────────────────────────────
+function toggleRecording() {
+  if (!SpeechRecognition) return;
+  isRecording ? stopRecording() : startRecording();
+}
+
+let lastFinal = '';
+function startRecording() {
+  recognition = new SpeechRecognition();
+  recognition.lang = currentLang === 'ko' ? 'ko-KR' : 'en-US';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => {
+    isRecording = true;
+    document.getElementById('recDot').classList.add('active');
+    document.getElementById('statusText').textContent = t('status_rec');
+    document.getElementById('recordBtn').classList.add('recording');
+    document.getElementById('recordText').textContent = t('rec_stop');
+    document.getElementById('micIcon').innerHTML = '<rect x="6" y="6" width="12" height="12" rx="2"/>';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('transcriptContent').style.display = 'block';
+    document.getElementById('hint').classList.add('show');
+    document.getElementById('timerRing').classList.add('active');
+    startSummaryTimer();
+  };
+
+  recognition.onresult = (e) => {
+    let interim = '', newFinal = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const txt = e.results[i][0].transcript;
+      if (e.results[i].isFinal) {
+        // 중복 필터링
+        if (!isDuplicate(txt, lastFinal)) {
+          newFinal += txt;
+          lastFinal = txt;
+        }
+      } else {
+        interim += txt;
+      }
+    }
+    if (newFinal) { finalTranscript += newFinal; appendFinalText(newFinal); }
+    if (interimSpan) interimSpan.remove();
+    if (interim) {
+      interimSpan = document.createElement('span');
+      interimSpan.className = 'interim';
+      interimSpan.textContent = interim;
+      document.getElementById('transcriptContent').appendChild(interimSpan);
+    }
+    if (currentTab === 'transcript') scrollBottom();
+  };
+
+  recognition.onerror = (e) => {
+    if (e.error === 'not-allowed') showToast(t('toast_mic'));
+    else if (e.error !== 'aborted' && e.error !== 'network') showToast('Error: ' + e.error);
+  };
+
+  recognition.onend = () => { if (isRecording) recognition.start(); };
+  recognition.start();
+}
+
+function stopRecording() {
+  isRecording = false;
+  if (recognition) { recognition.abort(); recognition = null; }
+  if (interimSpan) { interimSpan.remove(); interimSpan = null; }
+  clearInterval(summaryInterval); summaryInterval = null;
+  document.getElementById('recDot').classList.remove('active');
+  document.getElementById('statusText').textContent = t('status_stopped');
+  document.getElementById('recordBtn').classList.remove('recording');
+  document.getElementById('recordText').textContent = t('rec_start');
+  document.getElementById('micIcon').innerHTML = '<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>';
+  document.getElementById('timerRing').classList.remove('active');
+  if (finalTranscript.trim().length > 30) runSummary(true);
+}
+
+// 중복 텍스트 필터링
+function isDuplicate(text, last) {
+  if (!last || !text) return false;
+  const a = text.trim().replace(/\s+/g, '');
+  const b = last.trim().replace(/\s+/g, '');
+  if (a.length < 3) return false;
+  const overlap = longestCommonSubstr(a, b);
+  return overlap / Math.min(a.length, b.length) > 0.7;
+}
+
+function longestCommonSubstr(a, b) {
+  let max = 0;
+  const m = a.length, n = b.length;
+  const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (a[i-1] === b[j-1]) { dp[i][j] = dp[i-1][j-1] + 1; max = Math.max(max, dp[i][j]); }
+    }
+  }
+  return max;
+}
+
+// ── Transcript ─────────────────────────────────
+function appendFinalText(text) {
+  const content = document.getElementById('transcriptContent');
+  text.split(/(\s+)/).forEach(w => {
+    if (/^\s+$/.test(w)) {
+      content.appendChild(document.createTextNode(w));
+    } else if (w) {
+      const span = document.createElement('span');
+      span.className = 'word';
+      span.textContent = w;
+      span.onclick = () => handleWordTap(span, w);
+      content.appendChild(span);
+    }
+  });
+}
+
+function handleWordTap(el, word) {
+  if (currentHighlighted) currentHighlighted.classList.remove('highlighted');
+  currentHighlighted = el;
+  el.classList.add('highlighted');
+  const context = getContext(el);
+  openPopup(word, context);
+  explainWord(word, context);
+}
+
+function getContext(el) {
+  const full = document.getElementById('transcriptContent').textContent;
+  const idx = full.indexOf(el.textContent);
+  return full.slice(Math.max(0, idx - 120), Math.min(full.length, idx + 120)).trim();
+}
+
+function openPopup(word, context) {
+  document.getElementById('popupTag').textContent = t('popup_tag');
+  document.getElementById('popupKeyword').textContent = word;
+  document.getElementById('popupBody').className = 'popup-body loading';
+  document.getElementById('popupBody').innerHTML = '<div class="mini-spinner"></div> ' + t('popup_loading');
+  document.getElementById('popupCtx').style.display = 'block';
+  document.getElementById('popupCtx').textContent = t('popup_ctx_prefix') + '"' + context + '"';
+  document.getElementById('popupOverlay').classList.add('show');
+}
+
+async function explainWord(word, context) {
+  try {
+    const res = await fetch('/api/explain', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() },
+      body: JSON.stringify({ word, context, lang: currentLang })
+    });
+    const data = await res.json();
+    document.getElementById('popupBody').className = 'popup-body';
+    document.getElementById('popupBody').textContent = data.explanation || '설명을 가져오지 못했어요.';
+    if (currentHighlighted) currentHighlighted.classList.remove('highlighted');
+  } catch {
+    document.getElementById('popupBody').className = 'popup-body';
+    document.getElementById('popupBody').textContent = '오류가 발생했어요. 다시 시도해주세요.';
+  }
+}
+
+function closePopup(e) {
+  if (e && e.target !== document.getElementById('popupOverlay')) return;
+  document.getElementById('popupOverlay').classList.remove('show');
+  if (currentHighlighted) { currentHighlighted.classList.remove('highlighted'); currentHighlighted = null; }
+}
+
+// ── Summary ────────────────────────────────────
+function startSummaryTimer() {
+  summaryInterval = setInterval(() => {
+    if (finalTranscript.length > 30 && !isSummarizing) runSummary(false);
+  }, 30000);
+}
+
+async function runSummary(isFinal) {
+  if (isSummarizing || finalTranscript.trim().length < 30) return;
+  isSummarizing = true;
+  document.getElementById('summaryLoading').classList.add('show');
+  document.getElementById('summaryLoading').querySelector('span').textContent = t('loading_summary');
+  if (currentTab === 'transcript') document.getElementById('summaryBadge').style.display = 'inline';
+  try {
+    const res = await fetch('/api/summary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() },
+      body: JSON.stringify({ transcript: finalTranscript.trim(), isFinal, lang: currentLang })
+    });
+    const data = await res.json();
+    renderSummaryBlock(data.summary, isFinal);
+  } catch {
+    showToast(t('toast_summary_fail'));
+  } finally {
+    isSummarizing = false;
+    document.getElementById('summaryLoading').classList.remove('show');
+  }
+}
+
+function renderSummaryBlock(text, isFinal) {
+  const container = document.getElementById('summaryContent');
+  container.innerHTML = '';
+  const now = new Date();
+  const time = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  const block = document.createElement('div');
+  block.className = 'summary-block';
+  const timeEl = document.createElement('div');
+  timeEl.className = 'block-time';
+  timeEl.textContent = (isFinal ? t('summary_final') : t('summary_update')) + time;
+  block.appendChild(timeEl);
+  const contentEl = document.createElement('div');
+  contentEl.className = 'block-content';
+  text.split('\n').forEach(line => {
+    const trimmed = line.replace(/^[•\-\*\d\.]\s*/, '').trim();
+    if (!trimmed) return;
+    const bullet = document.createElement('div');
+    bullet.className = 'bullet';
+    bullet.innerHTML = '<span class="bullet-dot">•</span><span>' + trimmed + '</span>';
+    contentEl.appendChild(bullet);
+  });
+  block.appendChild(contentEl);
+  container.appendChild(block);
+  document.getElementById('summaryEmpty') && document.getElementById('summaryEmpty').remove();
+}
+
+// ── Suggestions ────────────────────────────────
+async function getSuggestions() {
+  if (isSuggesting || finalTranscript.trim().length < 20) {
+    showToast(currentLang === 'ko' ? '대화 내용이 더 필요해요' : 'Need more conversation first');
+    return;
+  }
+  isSuggesting = true;
+  document.getElementById('suggestBtnText').textContent = t('loading_suggest');
+  try {
+    const res = await fetch('/api/suggest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() },
+      body: JSON.stringify({ transcript: finalTranscript.trim(), lang: currentLang })
+    });
+    const data = await res.json();
+    renderSuggestions(data.suggestions);
+  } catch {
+    showToast(t('toast_suggest_fail'));
+  } finally {
+    isSuggesting = false;
+    document.getElementById('suggestBtnText').textContent = t('suggest_btn');
+  }
+}
+
+function renderSuggestions(text) {
+  const container = document.getElementById('suggestContent');
+  container.innerHTML = '';
+  const block = document.createElement('div');
+  block.className = 'suggest-block';
+  const lines = text.split('\n').filter(l => l.trim());
+  lines.forEach((line, i) => {
+    const clean = line.replace(/^\d+\.\s*/, '').trim();
+    if (!clean) return;
+    const item = document.createElement('div');
+    item.className = 'suggest-item';
+    item.innerHTML = `<span class="suggest-num">${i+1}</span><div><div class="suggest-text">${clean}</div><div class="suggest-copy">${t('suggest_tap')}</div></div>`;
+    item.onclick = () => {
+      navigator.clipboard.writeText(clean).then(() => showToast(t('toast_copied'))).catch(() => {});
+    };
+    block.appendChild(item);
+  });
+  container.appendChild(block);
+}
+
+// ── Utilities ──────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function scrollBottom() {
+  const w = document.getElementById('panelTranscript');
+  w.scrollTop = w.scrollHeight;
+}
+
+function clearAll() {
+  finalTranscript = ''; lastFinal = ''; interimSpan = null;
+  if (isRecording) stopRecording();
+  const c = document.getElementById('transcriptContent');
+  c.innerHTML = ''; c.style.display = 'none';
+  document.getElementById('emptyState').style.display = 'flex';
+  document.getElementById('hint').classList.remove('show');
+  document.getElementById('statusText').textContent = t('status_idle');
+  document.getElementById('summaryContent').innerHTML = '<div class="empty-card" id="summaryEmpty">' + t('empty_summary').replace('\n','<br>') + '</div>';
+  document.getElementById('suggestContent').innerHTML = '';
+  document.getElementById('summaryBadge').style.display = 'none';
+  document.getElementById('timerRing').classList.remove('active');
+}
+
+init();
+</script>
+</body>
+</html>
