@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>미팅어시스트</title>
+<style>
+  :root {
+    --bg: #080808;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --border: #222222;
+    --accent: #00ff88;
+    --accent-dim: rgba(0,255,136,0.12);
+    --text: #e8e8e8;
+    --text2: #666;
+    --text3: #333;
+    --red: #ff4455;
+    --yellow: #ffcc00;
+    --r: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%; overflow: hidden;
+    background: var(--bg); color: var(--text);
+    font-family: 'Apple SD Gothic Neo', -apple-system, 'Noto Sans KR', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app { height: 100vh; display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; }
+
+  .header { padding: 52px 20px 12px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; border-bottom: 1px solid var(--border); }
+  .logo { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+  .logo span { color: var(--accent); }
+  .status-row { display: flex; align-items: center; gap: 8px; }
+  .rec-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text3); transition: background 0.3s; }
+  .rec-dot.active { background: var(--red); animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .status-text { font-size: 12px; color: var(--text2); }
+  .usage-badge { font-size: 11px; color: var(--text2); background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 10px; }
+  .usage-badge b { color: var(--accent); }
+
+  .tabs { display: flex; flex-shrink: 0; border-bottom: 1px solid var(--border); }
+  .tab { flex: 1; padding: 12px; font-size: 13px; font-weight: 500; color: var(--text3); text-align: center; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; letter-spacing: -0.2px; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .panel { display: none; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .panel::-webkit-scrollbar { display: none; }
+  .panel.active { display: flex; flex-direction: column; }
+
+  .transcript-inner { padding: 16px 20px; flex: 1; }
+  .empty-state { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--text3); }
+  .empty-icon { width: 52px; height: 52px; border: 1.5px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .empty-icon svg { width: 22px; height: 22px; stroke: var(--text3); fill: none; stroke-width: 1.5; }
+  .empty-state p { font-size: 14px; text-align: center; line-height: 1.7; }
+  .empty-state small { font-size: 12px; color: var(--text3); text-align: center; line-height: 1.6; }
+
+  .transcript-content { line-height: 2; font-size: 17px; letter-spacing: -0.2px; word-break: keep-all; }
+  .word { display: inline; cursor: pointer; border-radius: 4px; padding: 1px 0; transition: background 0.15s, color 0.15s; }
+  .word:active { background: var(--accent-dim); color: var(--accent); }
+  .word.highlighted { background: var(--accent-dim); color: var(--accent); }
+  .interim { color: var(--text2); font-style: italic; }
+
+  .summary-inner { padding: 16px 20px; flex: 1; }
+  .summary-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .summary-label { font-size: 11px; color: var(--text3); letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600; }
+  .summary-timer { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 6px; }
+  .timer-ring { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--border); border-top-color: var(--accent); animation: spin 30s linear infinite; display: none; }
+  .timer-ring.active { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .summary-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--text3); padding: 60px 0; text-align: center; }
+  .summary-empty p { font-size: 14px; line-height: 1.7; }
+
+  .summary-loading { display: none; align-items: center; gap: 10px; padding: 20px 0; color: var(--text2); font-size: 14px; }
+  .summary-loading.show { display: flex; }
+  .mini-spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spinfast 0.7s linear infinite; flex-shrink: 0; }
+  @keyframes spinfast { to { transform: rotate(360deg); } }
+
+  .summary-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; margin-bottom: 12px; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  .summary-block-time { font-size: 10px; color: var(--text3); margin-bottom: 10px; letter-spacing: 0.3px; }
+  .summary-block-content { font-size: 14px; line-height: 1.8; color: var(--text); }
+  .bullet { display: flex; gap: 8px; margin-bottom: 6px; }
+  .bullet:last-child { margin-bottom: 0; }
+  .bullet-dot { color: var(--accent); font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+
+  .controls { flex-shrink: 0; padding: 16px 20px 40px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+  .hint { text-align: center; font-size: 12px; color: var(--text3); display: none; }
+  .hint.show { display: block; }
+  .btn-row { display: flex; gap: 10px; align-items: center; }
+  .record-btn { flex: 1; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 50px; padding: 15px; color: var(--text); font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s; letter-spacing: -0.3px; }
+  .record-btn.recording { background: rgba(255,68,85,0.1); border-color: var(--red); color: var(--red); }
+  .record-btn:active { transform: scale(0.97); }
+  .record-btn svg { width: 18px; height: 18px; fill: none; stroke-width: 2; stroke: currentColor; }
+  .clear-btn { width: 48px; height: 48px; background: var(--surface2); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.2s; }
+  .clear-btn:active { transform: scale(0.93); }
+  .clear-btn svg { width: 16px; height: 16px; stroke: var(--text2); fill: none; stroke-width: 1.8; }
+
+  .popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: flex-end; z-index: 100; backdrop-filter: blur(2px); }
+  .popup-overlay.show { display: flex; }
+  .popup { width: 100%; max-width: 480px; margin: 0 auto; background: var(--surface); border: 1px solid var(--border); border-radius: 20px 20px 0 0; padding: 20px 20px 44px; animation: slideUp 0.25s cubic-bezier(0.4,0,0.2,1); position: relative; }
+  @keyframes slideUp { from{transform:translateY(100%);opacity:0} to{transform:translateY(0);opacity:1} }
+  .popup-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+  .popup-word { font-size: 11px; color: var(--accent); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 8px; }
+  .popup-keyword { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 14px; }
+  .popup-divider { height: 1px; background: var(--border); margin-bottom: 14px; }
+  .popup-body { font-size: 15px; line-height: 1.75; color: var(--text); min-height: 60px; }
+  .popup-body.loading-state { color: var(--text2); display: flex; align-items: center; gap: 10px; }
+  .popup-context { margin-top: 14px; padding: 10px 14px; background: var(--surface2); border-left: 2px solid var(--accent); border-radius: 0 8px 8px 0; font-size: 12px; color: var(--text2); line-height: 1.6; }
+  .popup-close { position: absolute; top: 20px; right: 20px; width: 28px; height: 28px; background: var(--surface2); border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; color: var(--text2); }
+
+  .limit-notice { margin: 0 20px; padding: 10px 16px; background: rgba(255,204,0,0.08); border: 1px solid rgba(255,204,0,0.2); border-radius: var(--r); font-size: 12px; color: var(--yellow); display: none; text-align: center; }
+  .limit-notice.show { display: block; }
+  .toast { position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%); background: var(--surface2); border: 1px solid var(--border); border-radius: 50px; padding: 10px 20px; font-size: 13px; color: var(--text2); white-space: nowrap; z-index: 200; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .not-supported { padding: 60px 24px; text-align: center; color: var(--text2); font-size: 14px; line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="logo">미팅<span>어시스트</span></div>
+    <div class="status-row">
+      <div class="rec-dot" id="recDot"></div>
+      <span class="status-text" id="statusText">대기 중</span>
+    </div>
+    <div class="usage-badge">설명 <b id="usedCount">0</b>/3회</div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" id="tabTranscript" onclick="switchTab('transcript')">실시간 자막</div>
+    <div class="tab" id="tabSummary" onclick="switchTab('summary')">
+      AI 요약 <span id="summaryBadge" style="display:none;margin-left:4px;background:var(--accent);color:#000;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;">NEW</span>
+    </div>
+  </div>
+
+  <div class="limit-notice" id="limitNotice">오늘 무료 단어 설명 3회를 모두 사용했어요. 요약은 계속 이용 가능해요.</div>
+
+  <div class="panel active" id="panelTranscript">
+    <div class="transcript-inner">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </div>
+        <p>아래 버튼을 눌러<br>녹음을 시작하세요</p>
+        <small>회의 내용이 실시간으로 텍스트로 변환되고<br>모르는 단어를 탭하면 AI가 설명해드려요</small>
+      </div>
+      <div class="transcript-content" id="transcriptContent" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panelSummary">
+    <div class="summary-inner">
+      <div class="summary-header">
+        <div class="summary-label">회의 요약</div>
+        <div class="summary-timer">
+          <div class="timer-ring" id="timerRing"></div>
+          <span id="timerText">녹음 시작 후 자동 갱신</span>
+        </div>
+      </div>
+      <div class="summary-loading" id="summaryLoading">
+        <div class="mini-spinner"></div> 요약 생성 중...
+      </div>
+      <div id="summaryBlocks">
+        <div class="summary-empty"><p>녹음을 시작하면<br>30초마다 자동으로<br>요약이 업데이트돼요</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="hint" id="hint">모르는 단어를 탭하면 AI가 설명해드려요</div>
+    <div class="btn-row">
+      <button class="record-btn" id="recordBtn" onclick="toggleRecording()">
+        <svg id="micIcon" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        <span id="recordText">녹음 시작</span>
+      </button>
+      <button class="clear-btn" onclick="clearAll()" title="초기화">
+        <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.49"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="popup-overlay" id="popupOverlay" onclick="closePopup(event)">
+  <div class="popup">
+    <div class="popup-handle"></div>
+    <div class="popup-close" onclick="closePopup()">✕</div>
+    <div class="popup-word">용어 설명</div>
+    <div class="popup-keyword" id="popupKeyword"></div>
+    <div class="popup-divider"></div>
+    <div class="popup-body" id="popupBody"></div>
+    <div class="popup-context" id="popupContext" style="display:none"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const TODAY = new Date().toDateString();
+
+if (!SpeechRecognition) {
+  document.querySelector('.app').innerHTML = '<div class="not-supported">이 기능은 Chrome 브라우저에서만 지원돼요.<br><br>Chrome으로 접속해주세요.</div>';
+}
+
+let recognition = null, isRecording = false;
+let finalTranscript = '', interimSpan = null, currentHighlighted = null;
+let summaryInterval = null, lastSummarizedLength = 0, isSummarizing = false;
+let currentTab = 'transcript';
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabTranscript').className = 'tab' + (tab === 'transcript' ? ' active' : '');
+  document.getElementById('tabSummary').className = 'tab' + (tab === 'summary' ? ' active' : '');
+  document.getElementById('panelTranscript').className = 'panel' + (tab === 'transcript' ? ' active' : '');
+  document.getElementById('panelSummary').className = 'panel' + (tab === 'summary' ? ' active' : '');
+  if (tab === 'summary') document.getElementById('summaryBadge').style.display = 'none';
+}
+
+function getUsage() {
+  const s = localStorage.getItem('ma_usage');
+  if (!s) return { date: TODAY, count: 0 };
+  const d = JSON.parse(s);
+  return d.date !== TODAY ? { date: TODAY, count: 0 } : d;
+}
+function saveUsage(c) { localStorage.setItem('ma_usage', JSON.stringify({ date: TODAY, count: c })); }
+function updateUsageUI() {
+  const { count } = getUsage();
+  document.getElementById('usedCount').textContent = count;
+  if (count >= 3) document.getElementById('limitNotice').classList.add('show');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function toggleRecording() {
+  if (!SpeechRecognition) return;
+  isRecording ? stopRecording() : startRecording();
+}
+
+function startRecording() {
+  recognition = new SpeechRecognition();
+  recognition.lang = 'ko-KR';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => {
+    isRecording = true;
+    document.getElementById('recDot').classList.add('active');
+    document.getElementById('statusText').textContent = '녹음 중';
+    document.getElementById('recordBtn').classList.add('recording');
+    document.getElementById('recordText').textContent = '녹음 중지';
+    document.getElementById('micIcon').innerHTML = '<rect x="6" y="6" width="12" height="12" rx="2"/>';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('transcriptContent').style.display = 'block';
+    document.getElementById('hint').classList.add('show');
+    startSummaryTimer();
+  };
+
+  recognition.onresult = (e) => {
+    let interim = '', newFinal = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      e.results[i].isFinal ? (newFinal += t) : (interim += t);
+    }
+    if (newFinal) { finalTranscript += newFinal; appendFinalText(newFinal); }
+    if (interimSpan) interimSpan.remove();
+    if (interim) {
+      interimSpan = document.createElement('span');
+      interimSpan.className = 'interim';
+      interimSpan.textContent = interim;
+      document.getElementById('transcriptContent').appendChild(interimSpan);
+    }
+    scrollBottom();
+  };
+
+  recognition.onerror = (e) => {
+    if (e.error === 'not-allowed') showToast('마이크 권한을 허용해주세요');
+    else if (e.error === 'network') showToast('네트워크 오류');
+    else if (e.error !== 'aborted') showToast('인식 오류: ' + e.error);
+  };
+
+  recognition.onend = () => { if (isRecording) recognition.start(); };
+  recognition.start();
+}
+
+function stopRecording() {
+  isRecording = false;
+  if (recognition) { recognition.abort(); recognition = null; }
+  if (interimSpan) { interimSpan.remove(); interimSpan = null; }
+  clearInterval(summaryInterval); summaryInterval = null;
+  document.getElementById('recDot').classList.remove('active');
+  document.getElementById('statusText').textContent = '중지됨';
+  document.getElementById('recordBtn').classList.remove('recording');
+  document.getElementById('recordText').textContent = '녹음 시작';
+  document.getElementById('micIcon').innerHTML = '<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>';
+  document.getElementById('timerRing').classList.remove('active');
+  document.getElementById('timerText').textContent = '중지됨';
+  if (finalTranscript.trim().length > 50) runSummary(true);
+}
+
+function appendFinalText(text) {
+  const content = document.getElementById('transcriptContent');
+  text.split(/(\s+)/).forEach(w => {
+    if (/^\s+$/.test(w)) {
+      content.appendChild(document.createTextNode(w));
+    } else if (w) {
+      const span = document.createElement('span');
+      span.className = 'word';
+      span.textContent = w;
+      span.onclick = () => handleWordTap(span, w);
+      content.appendChild(span);
+    }
+  });
+}
+
+function handleWordTap(el, word) {
+  const usage = getUsage();
+  if (usage.count >= 3) {
+    document.getElementById('limitNotice').classList.add('show');
+    showToast('오늘 무료 설명을 모두 사용했어요');
+    return;
+  }
+  if (currentHighlighted) currentHighlighted.classList.remove('highlighted');
+  currentHighlighted = el;
+  el.classList.add('highlighted');
+  const context = getContext(el);
+  openPopup(word, context);
+  explainWord(word, context);
+}
+
+function getContext(el) {
+  const full = document.getElementById('transcriptContent').textContent;
+  const idx = full.indexOf(el.textContent);
+  return full.slice(Math.max(0, idx - 120), Math.min(full.length, idx + 120)).trim();
+}
+
+function openPopup(word, context) {
+  document.getElementById('popupKeyword').textContent = word;
+  document.getElementById('popupBody').className = 'popup-body loading-state';
+  document.getElementById('popupBody').innerHTML = '<div class="mini-spinner"></div> AI가 분석 중이에요...';
+  document.getElementById('popupContext').style.display = 'block';
+  document.getElementById('popupContext').textContent = '문맥: "' + context + '"';
+  document.getElementById('popupOverlay').classList.add('show');
+}
+
+async function explainWord(word, context) {
+  try {
+    const res = await fetch('/api/explain', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ word, context })
+    });
+    const data = await res.json();
+    const usage = getUsage();
+    saveUsage(usage.count + 1);
+    updateUsageUI();
+    document.getElementById('popupBody').className = 'popup-body';
+    document.getElementById('popupBody').textContent = data.explanation;
+    if (currentHighlighted) currentHighlighted.classList.remove('highlighted', 'loading');
+  } catch {
+    document.getElementById('popupBody').className = 'popup-body';
+    document.getElementById('popupBody').textContent = '설명을 불러오는 데 실패했어요.';
+  }
+}
+
+function closePopup(e) {
+  if (e && e.target !== document.getElementById('popupOverlay')) return;
+  document.getElementById('popupOverlay').classList.remove('show');
+  if (currentHighlighted) { currentHighlighted.classList.remove('highlighted'); currentHighlighted = null; }
+}
+
+function startSummaryTimer() {
+  document.getElementById('timerRing').classList.add('active');
+  document.getElementById('timerText').textContent = '30초마다 자동 갱신';
+  summaryInterval = setInterval(() => {
+    const newText = finalTranscript.slice(lastSummarizedLength).trim();
+    if (newText.length > 30 && !isSummarizing) runSummary(false);
+  }, 30000);
+}
+
+async function runSummary(isFinal) {
+  if (isSummarizing || finalTranscript.trim().length < 30) return;
+  isSummarizing = true;
+  document.getElementById('summaryLoading').classList.add('show');
+  if (currentTab === 'transcript') document.getElementById('summaryBadge').style.display = 'inline';
+  try {
+    const res = await fetch('/api/summary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transcript: finalTranscript.trim(), isFinal })
+    });
+    const data = await res.json();
+    lastSummarizedLength = finalTranscript.length;
+    renderSummaryBlock(data.summary, isFinal);
+  } catch {
+    showToast('요약 생성 실패');
+  } finally {
+    isSummarizing = false;
+    document.getElementById('summaryLoading').classList.remove('show');
+  }
+}
+
+function renderSummaryBlock(text, isFinal) {
+  const container = document.getElementById('summaryBlocks');
+  const empty = container.querySelector('.summary-empty');
+  if (empty) empty.remove();
+  container.innerHTML = '';
+  const now = new Date();
+  const time = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+  const block = document.createElement('div');
+  block.className = 'summary-block';
+  const timeEl = document.createElement('div');
+  timeEl.className = 'summary-block-time';
+  timeEl.textContent = (isFinal ? '최종 요약 · ' : '요약 업데이트 · ') + time;
+  block.appendChild(timeEl);
+  const contentEl = document.createElement('div');
+  contentEl.className = 'summary-block-content';
+  text.split('\n').forEach(line => {
+    const trimmed = line.replace(/^[•\-\*]\s*/, '').trim();
+    if (!trimmed) return;
+    const bullet = document.createElement('div');
+    bullet.className = 'bullet';
+    bullet.innerHTML = '<span class="bullet-dot">•</span><span>' + trimmed + '</span>';
+    contentEl.appendChild(bullet);
+  });
+  block.appendChild(contentEl);
+  container.appendChild(block);
+}
+
+function clearAll() {
+  finalTranscript = ''; lastSummarizedLength = 0; interimSpan = null;
+  if (isRecording) stopRecording();
+  const c = document.getElementById('transcriptContent');
+  c.innerHTML = ''; c.style.display = 'none';
+  document.getElementById('emptyState').style.display = 'flex';
+  document.getElementById('hint').classList.remove('show');
+  document.getElementById('statusText').textContent = '대기 중';
+  document.getElementById('summaryBlocks').innerHTML = '<div class="summary-empty"><p>녹음을 시작하면<br>30초마다 자동으로<br>요약이 업데이트돼요</p></div>';
+  document.getElementById('summaryBadge').style.display = 'none';
+  document.getElementById('timerRing').classList.remove('active');
+  document.getElementById('timerText').textContent = '녹음 시작 후 자동 갱신';
+}
+
+function scrollBottom() {
+  if (currentTab !== 'transcript') return;
+  const w = document.getElementById('panelTranscript');
+  w.scrollTop = w.scrollHeight;
+}
+
+updateUsageUI();
+</script>
+</body>
+</html>
