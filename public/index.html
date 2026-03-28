@@ -599,37 +599,41 @@ function toggleRecording() {
 }
 
 function startRecording() {
+  isRecording = true;
+  document.getElementById('recDot').classList.add('active');
+  document.getElementById('statusText').textContent = t('status_rec');
+  document.getElementById('recordBtn').classList.add('recording');
+  document.getElementById('recordText').textContent = t('rec_stop');
+  document.getElementById('micIcon').innerHTML = '<rect x="6" y="6" width="12" height="12" rx="2"/>';
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('transcriptContent').style.display = 'block';
+  document.getElementById('hint').classList.add('show');
+  document.getElementById('timerRing').classList.add('active');
+  startSummaryTimer();
+  startRecognition();
+}
+
+function startRecognition() {
+  if (!isRecording) return;
+
   recognition = new SpeechRecognition();
   recognition.lang = currentLang === 'ko' ? 'ko-KR' : 'en-US';
   recognition.continuous = true;
   recognition.interimResults = true;
-  recognition.maxAlternatives = 1;
-
-  recognition.onstart = () => {
-    isRecording = true;
-    document.getElementById('recDot').classList.add('active');
-    document.getElementById('statusText').textContent = t('status_rec');
-    document.getElementById('recordBtn').classList.add('recording');
-    document.getElementById('recordText').textContent = t('rec_stop');
-    document.getElementById('micIcon').innerHTML = '<rect x="6" y="6" width="12" height="12" rx="2"/>';
-    document.getElementById('emptyState').style.display = 'none';
-    document.getElementById('transcriptContent').style.display = 'block';
-    document.getElementById('hint').classList.add('show');
-    document.getElementById('timerRing').classList.add('active');
-    startSummaryTimer();
-  };
+  recognition.maxAlternatives = 3;
 
   recognition.onresult = (e) => {
     let interim = '', newFinal = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
-      const txt = e.results[i][0].transcript;
+      // maxAlternatives 중 가장 신뢰도 높은 것 선택
+      let bestTxt = e.results[i][0].transcript;
       if (e.results[i].isFinal) {
-        if (!isDuplicate(txt)) {
-          newFinal += txt;
-          lastFinalText = txt.trim();
+        if (!isDuplicate(bestTxt)) {
+          newFinal += bestTxt;
+          lastFinalText = bestTxt.trim();
         }
       } else {
-        interim += txt;
+        interim += bestTxt;
       }
     }
     if (newFinal) { finalTranscript += newFinal; appendFinalText(newFinal); }
@@ -644,12 +648,26 @@ function startRecording() {
   };
 
   recognition.onerror = (e) => {
-    if (e.error === 'not-allowed') showToast(t('toast_mic'));
-    else if (e.error !== 'aborted' && e.error !== 'network') showToast('Error: ' + e.error);
+    if (e.error === 'not-allowed') {
+      showToast(t('toast_mic'));
+      stopRecording();
+    }
+    // network, aborted 등은 무시하고 재시작
   };
 
-  recognition.onend = () => { if (isRecording) recognition.start(); };
-  recognition.start();
+  // 끊김 없이 즉시 재시작
+  recognition.onend = () => {
+    if (isRecording) {
+      // interim 텍스트 잠시 보존 후 재시작
+      setTimeout(() => startRecognition(), 100);
+    }
+  };
+
+  try {
+    recognition.start();
+  } catch(e) {
+    setTimeout(() => startRecognition(), 200);
+  }
 }
 
 function stopRecording() {
