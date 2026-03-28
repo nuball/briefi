@@ -409,7 +409,7 @@ if (!SpeechRecognition) {
 }
 
 // ── State ──────────────────────────────────────
-let supabase = null;
+let supabaseClient = null;
 let currentUser = null;
 let currentSession = null;
 let recognition = null;
@@ -485,16 +485,16 @@ function t(key) { return i18n[currentLang][key] || key; }
 async function init() {
   try {
     const cfg = await fetch('/api/config').then(r => r.json());
-    supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+    supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
 
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
     if (session) {
       currentUser = session.user;
       currentSession = session;
       showApp();
     }
 
-    supabase.auth.onAuthStateChange((event, session) => {
+    supabaseClient.auth.onAuthStateChange((event, session) => {
       if (session) {
         currentUser = session.user;
         currentSession = session;
@@ -527,8 +527,8 @@ async function showApp() {
 
 // ── Auth ───────────────────────────────────────
 async function signInWithGoogle() {
-  if (!supabase) return;
-  await supabase.auth.signInWithOAuth({
+  if (!supabaseClient) return;
+  await supabaseClient.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: window.location.origin }
   });
@@ -536,7 +536,7 @@ async function signInWithGoogle() {
 
 async function signOut() {
   if (isRecording) stopRecording();
-  await supabase.auth.signOut();
+  await supabaseClient.auth.signOut();
 }
 
 function getToken() { return currentSession?.access_token || ''; }
