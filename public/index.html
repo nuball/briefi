@@ -630,10 +630,10 @@ async function startRecognition() {
           sampleRate: 16000
         }
       });
-      // AudioContext로 스트림 유지 (브라우저가 마이크 안 끄게)
+      // AudioContext로 스트림 유지 (스피커 출력 없이)
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const source = audioContext.createMediaStreamSource(micStream);
-      source.connect(audioContext.destination);
+      // destination 연결 안 함 - 스피커로 나가면 에코 발생
     } catch(e) {
       showToast(t('toast_mic'));
       stopRecording();
