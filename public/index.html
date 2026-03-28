@@ -613,34 +613,7 @@ function startRecording() {
   startRecognition();
 }
 
-let micStream = null;
-let audioContext = null;
-let silenceKeepAlive = null;
-
-async function startRecognition() {
-  if (!isRecording) return;
-
-  // 마이크 스트림을 한 번만 열고 계속 유지
-  if (!micStream) {
-    try {
-      micStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 16000
-        }
-      });
-      // AudioContext로 스트림 유지 (스피커 출력 없이)
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const source = audioContext.createMediaStreamSource(micStream);
-      // destination 연결 안 함 - 스피커로 나가면 에코 발생
-    } catch(e) {
-      showToast(t('toast_mic'));
-      stopRecording();
-      return;
-    }
-  }
-
+function startRecognition() {
   recognition = new SpeechRecognition();
   recognition.lang = currentLang === 'ko' ? 'ko-KR' : 'en-US';
   recognition.continuous = true;
@@ -674,23 +647,13 @@ async function startRecognition() {
   recognition.onerror = (e) => {
     if (e.error === 'not-allowed') {
       showToast(t('toast_mic'));
-      stopRecording();
+      isRecording = false;
     }
   };
 
-  recognition.onsoundend = () => {
-    // 소리가 끊겨도 바로 재시작 안 함
-  };
-
   recognition.onend = () => {
-    if (!isRecording) return;
-    // 끊기면 즉시 재시작
-    try {
+    if (isRecording) {
       recognition.start();
-    } catch(e) {
-      setTimeout(() => {
-        if (isRecording) recognition.start();
-      }, 50);
     }
   };
 
@@ -700,9 +663,7 @@ async function startRecognition() {
 function stopRecording() {
   isRecording = false;
   if (recognition) { recognition.abort(); recognition = null; }
-  if (silenceKeepAlive) { clearInterval(silenceKeepAlive); silenceKeepAlive = null; }
-  if (audioContext) { audioContext.close(); audioContext = null; }
-  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+
   if (interimSpan) { interimSpan.remove(); interimSpan = null; }
   clearInterval(summaryInterval); summaryInterval = null;
   document.getElementById('recDot').classList.remove('active');
